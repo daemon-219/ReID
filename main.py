@@ -14,7 +14,7 @@ from torch.optim import lr_scheduler
 from opt import opt
 from data import Data
 from network import MGN
-from loss import Loss, Loss_CE, Loss_triplet
+from loss import Loss, Loss_CE, Loss_triplet, Reweighted_Loss
 from utils.get_optimizer import get_optimizer
 from utils.extract_feature import extract_feature
 from utils.metrics import mean_ap, cmc, re_ranking
@@ -185,12 +185,14 @@ if __name__ == '__main__':
 
     data = Data()
     model = MGN()
-    loss = Loss()
-    # loss = Loss_CE()
+    # loss = Loss()
+    loss = Reweighted_Loss()
     writer = SummaryWriter('./logs/' + str(opt.fake_ratio) + time.asctime(time.localtime(time.time())))
     main = Main(model, loss, data, writer)
 
     if opt.mode == 'train':
+        os.makedirs('weights', exist_ok=True)
+        os.makedirs('train_loss/{}fake'.format(opt.fake_ratio), exist_ok=True)
 
         for epoch in range(1, opt.epoch + 1):
             print('\nepoch', epoch)
@@ -199,11 +201,14 @@ if __name__ == '__main__':
                 writer.add_histogram(name + '_grad', param.grad, epoch)
                 writer.add_histogram(name + '_data', param, epoch)
 
-            if epoch % 10 == 0:
+            if epoch % 5 == 0:
+                print('plot per sample loss')
+                main.persample_loss(num_batch=-1, save_path='train_loss/rew_{}fake/loss{}.png'.format(opt.fake_ratio, epoch))
+            
+            if epoch % 20 == 0:
                 print('\nstart evaluate')
                 main.evaluate()
-                os.makedirs('weights', exist_ok=True)
-                torch.save(model.state_dict(), ('weights/model_{}{}.pt'.format(epoch, opt.fake_ratio)))
+                torch.save(model.state_dict(), ('weights/rew_{}fake/model_{}{}.pt'.format(opt.fake_ratio, epoch, opt.fake_ratio)))
 
     if opt.mode == 'evaluate':
         print('start evaluate')
@@ -212,6 +217,7 @@ if __name__ == '__main__':
 
     if opt.mode == 'plot':
         print('plot per sample loss')
+        os.makedirs('plot_loss/0.0fake', exist_ok=True)
         model.load_state_dict(torch.load(opt.weight))
         main.persample_loss(num_batch=-1, save_path='plot_loss/0.0fake/loss.png')
 

@@ -34,12 +34,13 @@ def plot_loss_distribution(real_loss, fake_loss, save_path=''):
         plt.show()
     
     batch_size = len(real_loss)
-    real_prob =  get_prob(np.array(real_loss+fake_loss).reshape(-1, 1), batch_size)
+    real_prob =  get_prob(np.array(real_loss+fake_loss))
     acc = ((real_prob[:batch_size]>=0.5).sum() + (real_prob[batch_size:]<0.5).sum()) / (batch_size*2)
     return acc
 
 
 def get_prob(X):
+    X = X.reshape(-1, 1)
     gmm = GMM(n_components=2).fit(X)
     predict_proba = gmm.predict_proba(X)
     means = gmm.means_
